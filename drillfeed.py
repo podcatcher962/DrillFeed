@@ -226,6 +226,7 @@ class DrillFeed:
         ttk.Label(top, text="  ").pack(side=tk.LEFT)
         self._cbtn(top, "⭐ 收藏", '#FFC107', lambda: self._toggle_bookmark(), side=tk.LEFT, padx=2)
         self._cbtn(top, "🌐 打开原文", '#2196F3', self._open_link, side=tk.LEFT, padx=2)
+        self._cbtn(top, "📤 分享", '#E91E63', self._show_share_card, side=tk.LEFT, padx=2)
         self._cbtn(top, "✓ 已读", '#9E9E9E', self._mark_read, side=tk.LEFT, padx=2)
         self._cbtn(top, "未读", '#E91E63', lambda: self._load_articles(unread_only=True), side=tk.LEFT, padx=2)
         self._cbtn(top, "全部", '#607D8B', lambda: self._load_articles(), side=tk.LEFT, padx=2)
@@ -450,6 +451,31 @@ class DrillFeed:
         title_key = vals[0].replace('📖 ','').replace('⭐ ','')
         self.conn.execute("UPDATE articles SET is_read=1 WHERE title=?",(title_key,))
         self.conn.commit(); self._load_articles()
+
+    def _show_share_card(self):
+        sel = self.art_tree.selection()
+        if not sel: return
+        vals = self.art_tree.item(sel[0], 'values')
+        title_key = vals[0].replace('📖 ','').replace('⭐ ','')
+        row = self.conn.execute("SELECT a.title,a.published,a.summary,a.link,f.title FROM articles a JOIN feeds f ON a.feed_id=f.id WHERE a.title=? LIMIT 1",(title_key,)).fetchone()
+        if not row: return
+        title, pub, summary, link, source = row
+        pub_str = pub[:10] if pub else ''
+        desc = (summary or '')[:200]
+        text = f"📰 {title}\n\n📅 {pub_str}  |  来源: {source}\n\n{desc}\n\n🔗 {link}\n\n—— 来自 DrillFeed"
+        # Popup window
+        win = tk.Toplevel(self.root); win.title("分享卡片"); win.geometry("400x360")
+        win.configure(bg='#fff')
+        tk.Label(win, text="📰 分享卡片", font=('Microsoft YaHei UI',13,'bold'), bg='#fff', fg='#333').pack(pady=(12,4))
+        card = tk.Text(win, font=('Microsoft YaHei UI',10), wrap=tk.WORD, bg='#FFFDE7', fg='#333',
+                       relief='flat', padx=12, pady=12, height=12)
+        card.insert('1.0', text); card.config(state=tk.DISABLED)
+        card.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0,8))
+        def cp():
+            win.clipboard_clear(); win.clipboard_append(text)
+            self.status_var.set('✅ 已复制分享卡片到剪贴板')
+        tk.Button(win, text="📋 复制到剪贴板", bg='#E91E63', fg='white', font=('Microsoft YaHei UI',10),
+                  relief='flat', padx=20, pady=6, cursor='hand2', command=cp).pack(pady=(0,10))
 
 
 if __name__ == '__main__':
