@@ -121,7 +121,7 @@ class DrillFeed:
     def __init__(self):
         self.conn = init_db()
         self.root = tk.Tk()
-        self.root.title("DrillFeed v1.0 - 垂直深度阅读")
+        self.root.title("DrillFeed v1.0 - 永远的兰兰")
         self.root.geometry("1020x700")
         self.root.minsize(800, 500)
         self._apply_theme()
@@ -182,7 +182,8 @@ class DrillFeed:
             "DrillFeed v1.0\n\n垂直深度阅读器 · 为研究者和极客打造\n\n"
             "Python 3 + tkinter + SQLite\nMIT License\n\n"
             "⚠️ 本工具仅供个人学习研究使用。\n"
-            "内置 RSS 源版权归各网站所有。")
+            "内置 RSS 源版权归各网站所有。\n\n"
+            "© 永远的兰兰")
 
     def _auto_import_if_empty(self):
         cnt = self.conn.execute("SELECT COUNT(*) FROM feeds").fetchone()[0]
