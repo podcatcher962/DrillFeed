@@ -63,3 +63,17 @@ A clean, native Windows desktop app that brings 15 curated Chinese RSS feeds int
 ## 📄 License
 
 MIT © podcatcher962
+
+---
+
+### 免责声明
+
+1. 本工具仅供个人学习研究使用。内置 RSS 源版权归各网站所有。
+2. 本软件按"原样"(AS-IS)提供，不提供任何明示或暗示的担保。
+3. 使用者须遵守所在地法律法规。
+
+### Disclaimer
+
+1. This tool is for personal study and research only. RSS feed content copyright belongs to respective websites.
+2. Provided AS-IS without warranty.
+3. Users must comply with local laws.
