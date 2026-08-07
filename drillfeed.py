@@ -53,7 +53,7 @@ DISCLAIMER = """⚠️ 免责声明
 
 # ======================= Database =======================
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.execute("""CREATE TABLE IF NOT EXISTS feeds(
         id INTEGER PRIMARY KEY, title TEXT, url TEXT UNIQUE, category TEXT,
         last_fetch TEXT, added_at TEXT)""")
@@ -127,9 +127,12 @@ class DrillFeed:
         self._apply_theme()
         self._build_menu()
         self._build_ui()
-        self._auto_import_if_empty()
-        self._load_feeds()
-        self._load_articles()
+        imported = self._auto_import_if_empty()
+        if imported:
+            self.root.after_idle(self._refresh_all)
+        else:
+            self._load_feeds()
+            self._load_articles()
 
     def _apply_theme(self):
         style = ttk.Style(); style.theme_use('clam')
@@ -194,9 +197,22 @@ class DrillFeed:
                     except: pass
             self.conn.commit()
             c = self.conn.execute("SELECT COUNT(*) FROM feeds").fetchone()[0]
-            self.status_var.set(f"首次启动 · 已自动导入 {c} 个精选源 · 点击 ⟳ 刷新拉取文章")
+            self.status_var.set(f"首次启动 · 已导入 {c} 个源 · 正在拉取文章...")
+            self._load_feeds()
+            self.root.update()
+            return True
+        return False
 
     def _build_ui(self):
+        # Status bar — pack FIRST so panels take space above it
+        status_frame = tk.Frame(self.root, bg='#E0E0E0', height=24)
+        status_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        status_frame.pack_propagate(False)
+        self.status_var = tk.StringVar(value='就绪')
+        self.status = tk.Label(status_frame, textvariable=self.status_var, anchor='w',
+                               bg='#E0E0E0', fg='#555', font=('Microsoft YaHei UI',8), padx=8)
+        self.status.pack(fill=tk.BOTH, expand=True)
+
         # Left panel
         left = ttk.Frame(self.root, width=240)
         left.pack(side=tk.LEFT, fill=tk.Y, padx=(4,2), pady=4)
@@ -255,15 +271,6 @@ class DrillFeed:
         self.detail_text = scrolledtext.ScrolledText(det_f, font=('Microsoft YaHei UI',9),
             wrap=tk.WORD, bg='white', fg='#333', height=10, state=tk.DISABLED)
         self.detail_text.pack(fill=tk.BOTH, expand=True)
-
-        # Status bar at bottom of entire window
-        status_frame = tk.Frame(self.root, bg='#E0E0E0', height=24)
-        status_frame.pack(side=tk.BOTTOM, fill=tk.X)
-        status_frame.pack_propagate(False)
-        self.status_var = tk.StringVar(value='就绪')
-        self.status = tk.Label(status_frame, textvariable=self.status_var, anchor='w',
-                               bg='#E0E0E0', fg='#555', font=('Microsoft YaHei UI',8), padx=8)
-        self.status.pack(fill=tk.BOTH, expand=True)
 
     # ===== Feed Management =====
     def _load_feeds(self):
@@ -372,7 +379,7 @@ class DrillFeed:
                 q += " AND a.published LIKE ?"
                 params.append(f'{cutoff}%')
             else:
-                q += " AND (a.published >= ? OR a.published = '')"
+                q += " AND a.published >= ?"
                 params.append(cutoff)
         q += " ORDER BY COALESCE(a.published, a.fetched_at) DESC, a.id DESC LIMIT 300"
         rows = self.conn.execute(q, params).fetchall()
