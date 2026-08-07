@@ -134,23 +134,30 @@ async function loadFeed(url){
   currentFeed=url;selectedIdx=-1;articles=[];
   document.getElementById('articleList').innerHTML='<div class="empty-state">⏳ 加载中...</div>';
   document.getElementById('contentArea').innerHTML='<em>加载中...</em>';
-  document.getElementById('loadStatus').textContent='⏳ 正在加载: '+url.replace(/https?:\/\//,'').slice(0,40)+'...';
+  document.getElementById('loadStatus').textContent='⏳ '+url.replace(/https?:\/\//,'').slice(0,35)+'...';
   renderFeedList();
   try{
     var data=null;
+    // Proxy 1: rss2json
     try{
-      var pr=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(url)+'&count=25');
+      var pr=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(url)+'&count=30');
       var json=await pr.json();
-      if(json.status==='ok'&&json.items){
-        data=json.items.map(function(i){return[cleanText(i.title),i.link||'',i.pubDate||'',cleanText(i.description||i.content||'').slice(0,1200)]});
-      }
-    }catch(e){}
+      if(json.status==='ok'&&json.items)data=json.items.map(function(i){
+        return[cleanText(i.title),i.link||'',i.pubDate||'',cleanText(i.description||i.content||'').slice(0,1200)];
+      });
+    }catch(e){console.log('rss2json failed')}
+    // Proxy 2: allorigins
     if(!data){try{
-      var r=await fetch(url+((url.indexOf('?')>=0)?'&':'?')+'_t='+Date.now());
-      if(r.ok){var xml=await r.text();data=parseXML(xml)}
+      var ao=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url));
+      if(ao.ok){var xml=await ao.text();data=parseXML(xml)}
     }catch(e){}}
-    if(data&&data.length){articles=data;renderArticles();document.getElementById('loadStatus').textContent='✅ '+data.length+' 篇文章'}
-    else{document.getElementById('articleList').innerHTML='<div class="empty-state">❌ 此源无法加载<br><br>桌面版可正常使用（无 CORS 限制）</div>';document.getElementById('loadStatus').textContent='❌ 加载失败'}
+    // Proxy 3: corsproxy
+    if(!data){try{
+      var cp=await fetch('https://corsproxy.io/?'+encodeURIComponent(url));
+      if(cp.ok){var xml2=await cp.text();data=parseXML(xml2)}
+    }catch(e){}}
+    if(data&&data.length){articles=data;renderArticles();document.getElementById('loadStatus').textContent='✅ '+data.length+' 篇'}
+    else{document.getElementById('articleList').innerHTML='<div class="empty-state">❌ 无法加载<br><br>3 个代理均失败<br>桌面版无此限制</div>';document.getElementById('loadStatus').textContent='❌ 失败'}
   }catch(e){document.getElementById('articleList').innerHTML='<div class="empty-state">❌ '+e.message+'</div>'}
 }
 
