@@ -92,7 +92,7 @@ const MODAL={help:'📖 DrillFeed 使用说明\n\n左侧分类树点击展开源
   about:'DrillFeed v1.1\n\n开源 RSS 阅读器\n15 内置源 / 5 分类\n\n桌面版: Python 3 + tkinter + SQLite, 13MB\nWeb 版: 纯 HTML + CSS + JS, 单文件\n\nGitHub: https://github.com/podcatcher962/DrillFeed\n© 永远的兰兰'};
 
 let feeds=JSON.parse(localStorage.getItem('dffeeds')||'null');
-if(!feeds){feeds=JSON.parse(JSON.stringify(PRESET_FEEDS));saveFeeds()}
+if(!feeds||localStorage.getItem('dfver')!=='2'){feeds=JSON.parse(JSON.stringify(PRESET_FEEDS));saveFeeds();localStorage.setItem('dfver','2')}
 let currentFeed='',articles=[],selectedIdx=-1;
 
 function saveFeeds(){localStorage.setItem('dffeeds',JSON.stringify(feeds))}
