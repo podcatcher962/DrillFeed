@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>DrillFeed · RSS 阅读器</title>
+<style>
+:root{--bg:#F5F5F5;--card:#FFF;--accent:#7C4DFF;--accent2:#651FFF;--fg:#212121;--fg2:#757575;--border:#E0E0E0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Microsoft YaHei UI','PingFang SC',sans-serif;background:var(--bg);color:var(--fg);max-width:680px;margin:0 auto;padding:8px;min-height:100vh;display:flex;flex-direction:column}
+.title-bar{flex-shrink:0;background:var(--accent);color:#fff;padding:12px 16px;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:space-between}
+.title-bar h1{font-size:18px;margin:0}
+.title-bar .sub{font-size:12px;opacity:0.85}
+.feed-row{flex-shrink:0;display:flex;gap:4px;padding:8px 12px;background:#EEE8FF;border:1px solid var(--accent2);border-top:none;flex-wrap:wrap}
+.feed-btn{padding:5px 10px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:#FFF;cursor:pointer;white-space:nowrap;font-weight:600}
+.feed-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.add-bar{flex-shrink:0;display:flex;gap:4px;padding:6px 12px;background:var(--card);border:1px solid var(--border);border-top:none}
+.add-bar input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px}
+.add-bar button{padding:6px 12px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600}
+.article-list{flex:1;min-height:200px;background:var(--card);border:1px solid var(--border);border-top:none;overflow-y:auto;padding:4px 0}
+.art-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid #F0F0F0;font-size:13px;line-height:1.6}
+.art-item:hover{background:#F8F4FF}
+.art-item.selected{background:#EEE8FF;border-left:3px solid var(--accent)}
+.art-item .art-title{font-weight:600;margin-bottom:2px}
+.art-item .art-meta{font-size:10px;color:var(--fg2)}
+.content-area{flex-shrink:0;background:var(--card);border:1px solid var(--border);border-top:none;padding:14px 16px;max-height:240px;overflow-y:auto;font-size:13px;line-height:1.8;border-radius:0 0 8px 8px}
+.content-area h3{margin-bottom:8px;color:var(--accent)}
+.content-area .desc{color:var(--fg2);font-size:12px;white-space:pre-wrap}
+.content-area a{color:var(--accent)}
+.status-bar{text-align:center;color:var(--fg2);font-size:10px;padding:8px}
+.status-bar a{color:var(--accent);text-decoration:none}
+.loading{text-align:center;padding:20px;color:var(--fg2);font-size:13px}
+</style>
+</head>
+<body>
+<div class="title-bar">
+  <div><h1>🔬 DrillFeed</h1><span class="sub">永远的兰兰 · 开源 RSS 阅读器</span></div>
+</div>
+<div class="feed-row" id="feedRow"></div>
+<div class="add-bar">
+  <input id="feedInput" placeholder="输入 RSS 订阅地址...">
+  <button onclick="addFeed()">＋ 添加</button>
+  <button onclick="refreshFeeds()" style="background:#00BFA5">🔄 刷新</button>
+</div>
+<div class="article-list" id="articleList"><div class="loading">选择一个订阅源开始阅读</div></div>
+<div class="content-area" id="contentArea"><em>点击文章标题查看详情</em></div>
+<div class="status-bar">
+  <a href="https://github.com/podcatcher962/DrillFeed" target="_blank">github.com/podcatcher962/DrillFeed</a> · © 永远的兰兰 · RSS 版权归源站所有
+</div>
+
+<script>
+const DEFAULT_FEEDS=[
+  ['36氪','https://36kr.com/feed'],
+  ['知乎日报','https://www.zhihu.com/rss'],
+  ['少数派','https://sspai.com/feed'],
+  ['阮一峰','https://feeds.feedburner.com/ruanyifeng'],
+  ['InfoQ','https://www.infoq.cn/feed'],
+  ['Solidot','https://www.solidot.org/index.rss'],
+];
+
+let feeds=JSON.parse(localStorage.getItem('drillfeeds')||'[]');
+if(feeds.length===0){feeds=DEFAULT_FEEDS;saveFeeds()}
+let currentFeed='',articles=[],selectedIdx=-1;
+
+function saveFeeds(){localStorage.setItem('drillfeeds',JSON.stringify(feeds))}
+function feedKey(url){return url.replace(/[^a-z0-9]/gi,'_').slice(0,40)}
+
+function renderFeeds(){
+  var row=document.getElementById('feedRow');
+  row.innerHTML='';
+  feeds.forEach(function(f){
+    var btn=document.createElement('button');
+    btn.className='feed-btn'+(f[1]===currentFeed?' active':'');
+    btn.textContent=f[0];btn.title=f[1];
+    btn.onclick=function(){loadFeed(f[1])};
+    row.appendChild(btn);
+  });
+}
+renderFeeds();
+
+function addFeed(){
+  var inp=document.getElementById('feedInput'),url=inp.value.trim();
+  if(!url)return;
+  if(!feeds.some(function(f){return f[1]===url})){
+    feeds.push([url.replace(/https?:\/\//,'').replace(/\/.*/,'').slice(0,20),url]);
+    saveFeeds();renderFeeds();
+  }
+  inp.value='';
+  loadFeed(url);
+}
+
+function refreshFeeds(){if(currentFeed)loadFeed(currentFeed)}
+
+async function loadFeed(url){
+  currentFeed=url;selectedIdx=-1;articles=[];
+  document.getElementById('articleList').innerHTML='<div class="loading">⏳ 加载中...</div>';
+  document.getElementById('contentArea').innerHTML='<em>加载中...</em>';
+  renderFeeds();
+  try{
+    // Try direct fetch first
+    var data;
+    try{
+      var r=await fetch(url,{cache:'no-cache'});
+      if(r.ok){var xml=await r.text();data=parseXML(xml);}
+    }catch(e){}
+    // Fallback: rss2json proxy
+    if(!data){
+      var pr=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(url));
+      var json=await pr.json();
+      if(json.status==='ok')data=json.items.map(function(i){return[cleanTitle(i.title),i.link,i.pubDate,i.description]});
+    }
+    if(data&&data.length){
+      articles=data;
+      renderArticles();
+    }else{
+      document.getElementById('articleList').innerHTML='<div class="loading">❌ 无法加载此源（可能需要 CORS 代理）</div>';
+    }
+  }catch(e){
+    document.getElementById('articleList').innerHTML='<div class="loading">❌ 加载失败: '+e.message+'</div>';
+  }
+}
+
+function parseXML(xml){
+  var items=[],parser=new DOMParser(),doc=parser.parseFromString(xml,'text/xml');
+  var entries=doc.querySelectorAll('item,entry');
+  for(var i=0;i<Math.min(entries.length,50);i++){
+    var e=entries[i];
+    var title=e.querySelector('title')?e.querySelector('title').textContent:'';
+    var link=e.querySelector('link');
+    link=link?(link.textContent||link.getAttribute('href')||''):'';
+    if(link&&link.startsWith('/'))link=new URL(currentFeed).origin+link;
+    var date=e.querySelector('pubDate,published,updated');
+    date=date?date.textContent:'';
+    var desc=e.querySelector('description,summary,content');
+    desc=desc?desc.textContent:'';
+    items.push([cleanTitle(title),link,date,desc]);
+  }
+  return items.length?items:null;
+}
+
+function cleanTitle(t){return(t||'').replace(/<!\[CDATA\[|\]\]>/g,'').replace(/<[^>]+>/g,'').trim()}
+function cleanDesc(d){return(d||'').replace(/<!\[CDATA\[|\]\]>/g,'').replace(/<[^>]+>/g,'').trim().slice(0,600)}
+
+function renderArticles(){
+  var list=document.getElementById('articleList');
+  list.innerHTML='';
+  if(!articles.length){list.innerHTML='<div class="loading">暂无文章</div>';return}
+  articles.forEach(function(a,i){
+    var div=document.createElement('div');
+    div.className='art-item'+(i===selectedIdx?' selected':'');
+    div.innerHTML='<div class="art-title">'+a[0]+'</div><div class="art-meta">'+formatDate(a[2])+'</div>';
+    div.onclick=function(){selectArticle(i)};
+    list.appendChild(div);
+  });
+}
+
+function selectArticle(i){
+  selectedIdx=i;
+  renderArticles();
+  var a=articles[i];
+  document.getElementById('contentArea').innerHTML=
+    '<h3><a href="'+a[1]+'" target="_blank">'+a[0]+'</a></h3>'+
+    '<div class="desc">'+cleanDesc(a[3])+'</div>'+
+    '<p style="margin-top:8px"><a href="'+a[1]+'" target="_blank">🔗 阅读原文</a></p>';
+  document.getElementById('contentArea').scrollTop=0;
+}
+
+function formatDate(d){
+  if(!d)return'';
+  try{return new Date(d).toLocaleString('zh-CN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return d.slice(0,16)}
+}
+
+// Load first feed on start
+if(feeds.length)loadFeed(feeds[0][1]);
+</script>
+</body>
+</html>
