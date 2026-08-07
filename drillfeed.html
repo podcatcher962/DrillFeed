@@ -21,11 +21,9 @@ body{font-family:'Microsoft YaHei UI','PingFang SC',sans-serif;background:var(--
 .cat-group{margin:0}
 .cat-header{font-size:11px;font-weight:700;color:var(--accent);padding:8px 10px 3px;border-bottom:1px solid #E0D0FF;background:#F8F4FF;cursor:pointer}
 .cat-header:hover{background:#EEE5FF}
-.feed-item{padding:6px 10px 6px 16px;cursor:pointer;font-size:11px;line-height:1.5;border-bottom:1px solid #F5F5F5;display:flex;justify-content:space-between;align-items:center}
+.feed-item{padding:7px 10px 7px 16px;cursor:pointer;font-size:12px;line-height:1.5;border-bottom:1px solid #F5F5F5}
 .feed-item:hover{background:#F0EBFF}
 .feed-item.active{background:var(--accent);color:#fff;font-weight:700}
-.feed-item .url-hint{font-size:9px;color:var(--fg2);opacity:0.5;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.feed-item.active .url-hint{color:rgba(255,255,255,0.6)}
 .right{flex:1;display:flex;flex-direction:column;min-width:0}
 .article-list{flex:1;min-height:0;background:var(--card);border:1px solid var(--border);border-top:none;border-left:none;overflow-y:auto}
 .art-item{padding:10px 12px;cursor:pointer;border-bottom:1px solid #F0F0F0;font-size:12px;line-height:1.5}
@@ -33,9 +31,10 @@ body{font-family:'Microsoft YaHei UI','PingFang SC',sans-serif;background:var(--
 .art-item.selected{background:#EEE8FF;border-left:3px solid var(--accent)}
 .art-item .art-title{font-weight:600;margin-bottom:2px}
 .art-item .art-meta{font-size:10px;color:var(--fg2)}
-.content-area{flex-shrink:0;background:var(--card);border:1px solid var(--border);border-top:none;border-left:none;padding:12px 14px;max-height:200px;overflow-y:auto;font-size:12px;line-height:1.7;border-radius:0 0 8px 0}
-.content-area h3{margin-bottom:6px;color:var(--accent);font-size:14px}
-.content-area .summary{color:var(--fg);font-size:12px;white-space:pre-wrap;max-height:110px;overflow-y:auto}
+.content-area{flex:1;min-height:160px;background:var(--card);border:1px solid var(--border);border-top:none;border-left:none;padding:14px 16px;overflow-y:auto;font-size:13px;line-height:1.8;border-radius:0 0 8px 0}
+.content-area h3{margin-bottom:8px;color:var(--accent);font-size:15px}
+.content-area h3 a{color:var(--accent);text-decoration:none}
+.content-area .summary{color:var(--fg);font-size:13px;white-space:pre-wrap;word-break:break-all}
 .content-area a{color:var(--accent);font-size:12px}
 .empty-state{text-align:center;padding:40px 20px;color:var(--fg2);font-size:13px}
 footer{flex-shrink:0;text-align:center;color:var(--fg2);font-size:10px;padding:10px 0 6px}
@@ -107,10 +106,7 @@ function renderFeedList(){
     feeds[cat].forEach(function(f){
       var item=document.createElement('div');
       item.className='feed-item'+(f[1]===currentFeed?' active':'');
-      var nameSpan=document.createElement('span');nameSpan.textContent=f[0];
-      var urlSpan=document.createElement('span');urlSpan.className='url-hint';urlSpan.textContent=f[1].replace(/https?:\/\//,'').slice(0,25);
-      item.appendChild(nameSpan);item.appendChild(urlSpan);
-      item.title=f[1];
+      item.textContent=f[0];item.title=f[1];
       item.onclick=function(url){return function(){loadFeed(url)}}(f[1]);
       group.appendChild(item);
     });
